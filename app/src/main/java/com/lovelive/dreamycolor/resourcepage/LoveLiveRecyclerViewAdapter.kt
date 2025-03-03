@@ -1,4 +1,4 @@
-package com.lovelive.dreamycolor.LoveLiveResource.ViewHolder
+package com.lovelive.dreamycolor.resourcepage.viewholder
 
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView

@@ -4,5 +4,5 @@ data class LoveLiveResourceModel(
     val name: String,
     val coverImageUrl: String,
     val resourceUrl: String,
-    val type: String
+    val type: Int
 )

@@ -1,7 +1,6 @@
-package com.lovelive.dreamycolor.LoveLiveResource.ViewHolder
+package com.lovelive.dreamycolor.resourcepage.viewholder
 
 import android.view.View
-import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 
 abstract class LoveLiveBaseViewHolder<T>(itemView: View): RecyclerView.ViewHolder(itemView) {

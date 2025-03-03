@@ -13,6 +13,7 @@
     <GridLayout
         android:id="@+id/lovelive_grid_container"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content"
+        android:columnCount="2"/>
 
 </LinearLayout>
