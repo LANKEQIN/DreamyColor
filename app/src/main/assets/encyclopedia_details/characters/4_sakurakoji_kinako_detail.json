@@ -1,0 +1,18 @@
+{
+  "characterName": "唐 可可",
+  "basicInfo": {
+    "cvName": "N/A",
+    "group": "Liella",
+    "attribute": "N/A",
+    "themeColor": "#FFE138"
+  },
+  "advancedInfo": {
+    "relationships": [
+      {
+        "target": "N/A",
+        "type": "N/A",
+        "description": "N/A"
+      }
+    ]
+  }
+}

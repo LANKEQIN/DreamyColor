@@ -20,12 +20,15 @@ import androidx.compose.ui.unit.dp
 import com.lovelive.dreamycolor.model.VoiceActorDetail
 import com.lovelive.dreamycolor.utils.DetailJsonUtils
 
+import androidx.activity.compose.BackHandler
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VoiceActorDetailScreen(
     voiceActorName: String,
     onBackPressed: () -> Unit
 ) {
+    BackHandler(onBack = onBackPressed)
+
     val context = LocalContext.current
     var voiceActorDetail by remember { mutableStateOf<VoiceActorDetail?>(null) }
     val themeColor = MaterialTheme.colorScheme.primary
@@ -53,6 +56,33 @@ fun VoiceActorDetailScreen(
             "小林爱香" -> "2_kobayashi_aika_detail.json"
             "高槻加奈子" -> "2_takatsuki_kanako_detail.json"
             "降幡爱" -> "2_furihata_ai_detail.json"
+
+            "矢野妃菜喜" -> "3_yano_hinaki_detail.json"
+            "大西亚玖璃" -> "3_onishi_aguri_detail.json"
+            "相良茉优" -> "3_sagara_mayu_detail.json"
+            "前田佳织里" -> "3_maeda_kaori_detail.json"
+            "久保田未梦" -> "3_kubota_miyu_detail.json"
+            "村上奈津实" -> "3_murakami_natsumi_detail.json"
+            "鬼头明里" -> "3_kito_akari_detail.json"
+            "指出毬亚" -> "3_sashide_maria_detail.json"
+            "田中千惠美" -> "3_tanaka_chiemi_detail.json"
+            "小泉萌香" -> "3_koizumi_moeka_detail.json"
+            "法元明菜"  -> "3_houmoto_akina_detail.json"
+            "内田秀" -> "3_uchida_shu_detail.json"
+            "楠木灯" -> "3_kusunoki_tomori_detail.json"
+            "林鼓子" -> "3_hayashi_koko_detail.json"
+
+            "伊达小百合" -> "4_data_sayuri_detail.json"
+            "Liyuu" -> "4_liyuu_detail.json"
+            "Payton尚未" -> "4_payton_naomi_detail.json"
+            "岬奈子" -> "4_misaki_nako_detail.json"
+            "青山渚" -> "4_aoyama_nagisa_detail.json"
+            "铃原希实" -> "4_suzuhara_nozomi_detail.json"
+            "薮岛朱音" -> "4_yabushima_akane_detail.json"
+            "大熊和奏" -> "4_okuma_wakana_detail.json"
+            "绘森彩" -> "4_emori_aya_detail.json"
+            "坂仓花" -> "4_sakakura_hana_detail.json"
+            "结那" -> "4_yuna_detail.json"
 
             else -> null
         }

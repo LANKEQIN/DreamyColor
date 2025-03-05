@@ -61,14 +61,15 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 
-import net.sourceforge.pinyin4j.format.HanyuPinyinCaseType
-import net.sourceforge.pinyin4j.format.HanyuPinyinOutputFormat
-import net.sourceforge.pinyin4j.format.HanyuPinyinToneType
-import net.sourceforge.pinyin4j.PinyinHelper
-import net.sourceforge.pinyin4j.format.exception.BadHanyuPinyinOutputFormatCombination
 import com.lovelive.dreamycolor.utils.PinyinUtils
-import androidx.compose.ui.text.TextStyle
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 
 // 用于对话框配置的数据类
 data class DialogConfig(
@@ -114,17 +115,22 @@ class MainActivity : ComponentActivity() {
                 // 使用rememberSaveable保持屏幕旋转后的状态
                 var showSplash by rememberSaveable { mutableStateOf(true) }
 
-                Crossfade(
-                    targetState = showSplash,
-                    animationSpec = tween(800)
-                ) { isSplash ->
-                    if (isSplash) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    // 主内容始终在底部
+                    MainContent(settingsManager = settingsManager)
+
+                    // 开屏动画覆盖在上面，逐渐消失
+                    AnimatedVisibility(
+                        visible = showSplash,
+                        enter = fadeIn(animationSpec = tween(300)),
+                        exit = fadeOut(animationSpec = tween(800))
+                    ) {
                         SplashScreen(
                             onTimeout = { showSplash = false },
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.background)
                         )
-                    } else {
-                        MainContent(settingsManager = settingsManager)
                     }
                 }
             }
@@ -177,9 +183,28 @@ fun MainContent(settingsManager: SettingsManager) {
     var characterName by rememberSaveable { mutableStateOf("") }
     var voiceActorName by rememberSaveable { mutableStateOf("") }
 
+    // 添加这个变量来记录百科卡片列表的滚动位置
+    var encyclopediaScrollPosition by rememberSaveable { mutableStateOf(0) }
+
+    // 添加Tab选择状态作为主导航机制
+    var selectedTabIndex by rememberSaveable { mutableStateOf(0) }
+
     // 使用rememberSaveable保持页面状态在配置更改时不丢失
-    val pagerState = rememberPagerState(pageCount = { items.size })
+    val pagerState = rememberPagerState(pageCount = { items.size }, initialPage = selectedTabIndex)
     val coroutineScope = rememberCoroutineScope()
+
+    // 确保pagerState和selectedTabIndex保持同步
+    LaunchedEffect(selectedTabIndex) {
+        if (pagerState.currentPage != selectedTabIndex) {
+            pagerState.animateScrollToPage(selectedTabIndex)
+        }
+    }
+
+    LaunchedEffect(pagerState.currentPage) {
+        if (pagerState.currentPage != selectedTabIndex) {
+            selectedTabIndex = pagerState.currentPage
+        }
+    }
 
     Scaffold(
         bottomBar = {
@@ -203,11 +228,9 @@ fun MainContent(settingsManager: SettingsManager) {
                                     )
                                 )
                             },
-                            selected = pagerState.currentPage == index,
+                            selected = selectedTabIndex == index,
                             onClick = {
-                                coroutineScope.launch {
-                                    pagerState.animateScrollToPage(index)
-                                }
+                                selectedTabIndex = index
                             }
                         )
                     }
@@ -215,40 +238,62 @@ fun MainContent(settingsManager: SettingsManager) {
             }
         }
     ) { innerPadding ->
-        // 使用Crossfade进行页面切换动画
-        Crossfade(
+        // 页面切换动画
+        AnimatedContent(
             targetState = currentScreen,
-            modifier = Modifier.padding(innerPadding)
+            modifier = Modifier.padding(innerPadding),
+            transitionSpec = {
+                fadeIn(animationSpec = tween(durationMillis = 300)) togetherWith
+                        fadeOut(animationSpec = tween(durationMillis = 300))
+            }
         ) { screen ->
             when (screen) {
                 "character_detail" -> CharacterDetailScreen(
                     characterName = characterName,
-                    onBackPressed = { currentScreen = null }
+                    onBackPressed = {
+                        // 返回到列表而不是直接退出
+                        currentScreen = null
+                    }
                 )
+
                 "voice_actor_detail" -> VoiceActorDetailScreen(
                     voiceActorName = voiceActorName,
-                    onBackPressed = { currentScreen = null }
+                    onBackPressed = {
+                        // 返回到列表而不是直接退出
+                        currentScreen = null
+                    }
                 )
+
                 null -> {
                     // 显示主界面
-                    HorizontalPager(
-                        state = pagerState,
-                        modifier = Modifier.fillMaxSize()
-                    ) { page ->
-                        when (page) {
-                            0 -> ExclusiveScreen()
-                            1 -> InspirationScreen()
-                            2 -> EncyclopediaScreen(
-                                onCharacterClick = { name ->
-                                    characterName = name
-                                    currentScreen = "character_detail"
-                                },
-                                onVoiceActorClick = { name ->
-                                    voiceActorName = name
-                                    currentScreen = "voice_actor_detail"
-                                }
-                            )
-                            3 -> ProfileScreen(settingsManager)
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        // 使用AnimatedContent切换Tab页面
+                        AnimatedContent(
+                            targetState = selectedTabIndex,
+                            transitionSpec = {
+                                fadeIn(animationSpec = tween(durationMillis = 300)) togetherWith
+                                        fadeOut(animationSpec = tween(durationMillis = 300))
+                            }
+                        ) { page ->
+                            when (page) {
+                                0 -> ExclusiveScreen()
+                                1 -> InspirationScreen()
+                                2 -> EncyclopediaScreen(
+                                    onCharacterClick = { name ->
+                                        characterName = name
+                                        currentScreen = "character_detail"
+                                    },
+                                    onVoiceActorClick = { name ->
+                                        voiceActorName = name
+                                        currentScreen = "voice_actor_detail"
+                                    },
+                                    initialScrollPosition = encyclopediaScrollPosition,
+                                    onScrollPositionChange = { position ->
+                                        encyclopediaScrollPosition = position
+                                    }
+                                )
+                                3 -> ProfileScreen(settingsManager)
+                            }
                         }
                     }
                 }
@@ -256,8 +301,6 @@ fun MainContent(settingsManager: SettingsManager) {
         }
     }
 }
-
-
 
 // Website数据类和相关函数已迁移到InspirationScreen.kt
 
@@ -278,12 +321,16 @@ sealed class GroupItem {
 @Composable
 fun EncyclopediaScreen(
     onCharacterClick: (String) -> Unit = {},
-    onVoiceActorClick: (String) -> Unit = {}
+    onVoiceActorClick: (String) -> Unit = {},
+    initialScrollPosition: Int = 0,
+    onScrollPositionChange: (Int) -> Unit = {}
 ) {
     val context = LocalContext.current
     val database = remember { EncyclopediaDatabase.getDatabase(context) }
     val repository = remember { EncyclopediaRepository(database.encyclopediaDao()) }
     val settingsManager = remember { SettingsManager(context) }
+
+    val listState = rememberLazyGridState(initialFirstVisibleItemIndex = initialScrollPosition)
 
     // 添加对话框状态管理
     var selectedCharacter by remember { mutableStateOf<CharacterCard?>(null) }
@@ -293,9 +340,13 @@ fun EncyclopediaScreen(
     val showCoefficient by settingsManager.showCoefficientFlow.collectAsState(initial = false)
     val showPinyin by settingsManager.showPinyinFlow.collectAsState(initial = false)
 
-    // 初始化数据库仅执行一次
-    LaunchedEffect(Unit) {
-        repository.initializeFromAssets(context)
+
+    // 监听列表滚动位置变化并上报
+    LaunchedEffect(listState.firstVisibleItemIndex) {
+        // 只有当滚动位置变化且不是初始化时才上报
+        if (listState.firstVisibleItemIndex != initialScrollPosition) {
+            onScrollPositionChange(listState.firstVisibleItemIndex)
+        }
     }
 
     // 使用工厂方法创建ViewModel
@@ -342,6 +393,12 @@ fun EncyclopediaScreen(
         }
     }
 
+
+    // 监听列表滚动位置变化
+    LaunchedEffect(listState.firstVisibleItemIndex) {
+        onScrollPositionChange(listState.firstVisibleItemIndex)
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
             // 切换按钮区域
@@ -377,13 +434,14 @@ fun EncyclopediaScreen(
                 }
             }
 
-            // 主内容区改用单 LazyGrid
+            // 主内容区改用单 LazyGrid，使用state参数保持滚动位置
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                state = listState
             ) {
                 items(
                     items = if (currentDimension == "角色") characterItems else voiceActorItems,
@@ -705,6 +763,7 @@ private fun NameSection(name: String, japaneseName: String, showPinyin: Boolean 
             text = name,
             style = MaterialTheme.typography.titleLarge.copy(
                 color = MaterialTheme.colorScheme.primary,
+                fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
             )
         )
@@ -716,7 +775,7 @@ private fun NameSection(name: String, japaneseName: String, showPinyin: Boolean 
                     text = pinyin,
                     style = MaterialTheme.typography.bodyMedium.copy(
                         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-                        fontSize = 15.sp,  // 拼音字体
+                        fontSize = 12.sp,  // 拼音字体
                         fontWeight = FontWeight.Normal
                     ),
                     lineHeight = 16.sp
@@ -729,7 +788,7 @@ private fun NameSection(name: String, japaneseName: String, showPinyin: Boolean 
             text = if (showPinyin) PinyinUtils.convertJapaneseToRomaji(japaneseName) else japaneseName,
             style = MaterialTheme.typography.bodyMedium.copy(
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                fontSize = 14.sp
+                fontSize = 12.sp
             ),
             lineHeight = if (showPinyin) 24.sp else 18.sp
         )
@@ -819,6 +878,7 @@ fun ProfileScreen(settingsManager: SettingsManager) {
     val textSize by settingsManager.textSizeFlow.collectAsState(
         initial = SettingsManager.TextSize.FOLLOW_SYSTEM
     )
+    val showPinyin by settingsManager.showPinyinFlow.collectAsState(initial = false)
 
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -896,47 +956,47 @@ fun ProfileScreen(settingsManager: SettingsManager) {
                         )
                     }
                 }
-                val showPinyin by settingsManager.showPinyinFlow.collectAsState(initial = false)
+            }
 
-                Card(
+            // 拼音设置卡片 - 独立卡片，不再嵌套在主题卡片内
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        coroutineScope.launch {
+                            settingsManager.setShowPinyin(!showPinyin)
+                        }
+                    },
+                shape = MaterialTheme.shapes.medium,
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                ),
+                elevation = CardDefaults.cardElevation(
+                    defaultElevation = 2.dp,
+                    pressedElevation = 4.dp
+                )
+            ) {
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable {
-                            coroutineScope.launch {
-                                settingsManager.setShowPinyin(!showPinyin)
-                            }
-                        },
-                    shape = MaterialTheme.shapes.medium,
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                    ),
-                    elevation = CardDefaults.cardElevation(
-                        defaultElevation = 2.dp,
-                        pressedElevation = 4.dp
-                    )
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Text(
-                            text = "百科卡片显示拼音及罗马音",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                color = MaterialTheme.colorScheme.primary
-                            )
+                    Text(
+                        text = "百科卡片显示拼音及罗马音",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            color = MaterialTheme.colorScheme.primary
                         )
-                        Switch(
-                            checked = showPinyin,
-                            onCheckedChange = {
-                                coroutineScope.launch {
-                                    settingsManager.setShowPinyin(it)
-                                }
+                    )
+                    Switch(
+                        checked = showPinyin,
+                        onCheckedChange = {
+                            coroutineScope.launch {
+                                settingsManager.setShowPinyin(it)
                             }
-                        )
-                    }
+                        }
+                    )
                 }
             }
         }

@@ -1,0 +1,18 @@
+{
+  "characterName": "鬼塚 夏美",
+  "basicInfo": {
+    "cvName": "N/A",
+    "group": "Liella",
+    "attribute": "N/A",
+    "themeColor": "#FF0000"
+  },
+  "advancedInfo": {
+    "relationships": [
+      {
+        "target": "N/A",
+        "type": "N/A",
+        "description": "N/A"
+      }
+    ]
+  }
+}

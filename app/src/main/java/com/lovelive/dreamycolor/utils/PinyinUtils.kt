@@ -146,7 +146,7 @@ object PinyinUtils {
         "高坂穗乃果" to "Gāo Bǎn Suì Nǎi Guǒ",
         "南小鸟" to "Nán Xiǎo Niǎo",
         "园田海未" to "Yuán Tián Hǎi Wèi",
-        "绚濑绘里" to "Xuàn Sài Huì Lǐ",
+        "绚濑绘里" to "Xuàn Lài Huì Lǐ",
         "东条希" to "Dōng Tiáo Xī",
         "矢泽妮可" to "Shǐ Zé Nī Kě",
         "西木野真姬" to "Xī Mù Yě Zhēn Jī",

@@ -1,0 +1,18 @@
+{
+  "characterName": "若菜 四季",
+  "basicInfo": {
+    "cvName": "N/A",
+    "group": "Liella",
+    "attribute": "N/A",
+    "themeColor": "#00FFFF"
+  },
+  "advancedInfo": {
+    "relationships": [
+      {
+        "target": "N/A",
+        "type": "N/A",
+        "description": "N/A"
+      }
+    ]
+  }
+}

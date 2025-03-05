@@ -1,0 +1,33 @@
+{
+  "voiceActorName": "内田秀",
+  "career": {
+    "agency": "アクロスエンタテインメント",
+    "debutYear": 2016,
+    "achievements": [
+      "赛马娘 Pretty Derby 美妙姿态 声优",
+      "偶像大师 灰姑娘女孩 姬川友纪 声优",
+      "以其清澈的声线和充满活力的表演而受到关注"
+    ]
+  },
+  "discography": {
+    "bestAlbum": "N/A",
+    "characterSongs": [
+      {
+        "title": "winning the soul",
+        "character": "美妙姿态 (赛马娘 Pretty Derby)"
+      },
+      {
+        "title": "GIRLS' LEGEND U",
+        "character": "赛马娘 Pretty Derby"
+      },
+      {
+        "title": "Twilight Sky",
+        "character": "姬川友纪 (偶像大师 灰姑娘女孩)"
+      },
+      {
+        "title": "Radio Happy",
+        "character": "姬川友纪 (偶像大师 灰姑娘女孩)"
+      }
+    ]
+  }
+}

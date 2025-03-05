@@ -1,0 +1,18 @@
+{
+  "characterName": "涩谷香音",
+  "basicInfo": {
+    "cvName": "伊达小百合",
+    "group": "Liella",
+    "attribute": "坚韧",
+    "themeColor": "#F5989D"
+  },
+  "advancedInfo": {
+    "relationships": [
+      {
+        "target": "N/A",
+        "type": "N/A",
+        "description": "N/A"
+      }
+    ]
+  }
+}

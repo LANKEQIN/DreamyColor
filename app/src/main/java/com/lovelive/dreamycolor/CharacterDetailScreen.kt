@@ -22,12 +22,16 @@ import com.lovelive.dreamycolor.model.CharacterDetail
 import com.lovelive.dreamycolor.model.toColor
 import com.lovelive.dreamycolor.utils.DetailJsonUtils
 
+import androidx.activity.compose.BackHandler
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CharacterDetailScreen(
     characterName: String,
     onBackPressed: () -> Unit
 ) {
+    BackHandler(onBack = onBackPressed)
+
     val context = LocalContext.current
     var characterDetail by remember { mutableStateOf<CharacterDetail?>(null) }
 
@@ -68,6 +72,18 @@ fun CharacterDetailScreen(
             "钟岚珠" -> "3_zhong_lanzhu_detail.json"
             "米雅·泰勒" -> "3_mia_taylor_detail.json"
             "优木雪菜" -> "3_yuuki_setsuna_detail.json"
+
+            "涩谷香音"  -> "4_shibuya_kanon_detail.json"
+            "唐可可"   -> "4_tang_keke_detail.json"
+            "岚千砂都" -> "4_arashi_chisato_detail.json"
+            "平安名堇" -> "4_heanna_sumire_detail.json"
+            "叶月恋" -> "4_hazuki_ren_detail.json"
+            "樱小路希奈子" -> "4_sakurakoji_kinako_detail.json"
+            "米女芽衣" -> "4_yoneme_mei_detail.json"
+            "若菜四季" -> "4_wakana_shiki_detail.json"
+            "鬼塚夏美" -> "4_onitsuka_natsumi_detail.json"
+            "鬼塚冬毬" -> "4_onitsuka_tomari_detail.json"
+            "薇恩·玛格丽特" -> "4_wien_margarete_detail.json"
 
 
             else -> null
