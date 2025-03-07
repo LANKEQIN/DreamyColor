@@ -170,13 +170,13 @@ fun MainContent(settingsManager: SettingsManager) {
     var characterName by rememberSaveable { mutableStateOf("") }
     var voiceActorName by rememberSaveable { mutableStateOf("") }
     // 添加这个变量来记录百科卡片列表的滚动位置
-    var encyclopediaScrollPosition by rememberSaveable { mutableStateOf(0) }
+    var encyclopediaScrollPosition by rememberSaveable { mutableIntStateOf(0) }
     var encyclopediaDimension by rememberSaveable { mutableStateOf("角色") }
     // 添加Tab选择状态作为主导航机制
-    var selectedTabIndex by rememberSaveable { mutableStateOf(0) }
+    var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
     // 使用rememberSaveable保持页面状态在配置更改时不丢失
     val pagerState = rememberPagerState(pageCount = { items.size }, initialPage = selectedTabIndex)
-    val coroutineScope = rememberCoroutineScope()
+
     // 确保pagerState和selectedTabIndex保持同步
     LaunchedEffect(selectedTabIndex) {
         if (pagerState.currentPage != selectedTabIndex) {
@@ -330,10 +330,13 @@ fun EncyclopediaScreen(
         onDimensionChange(currentDimension)
     }
     // 监听列表滚动位置变化并上报
-    LaunchedEffect(listState.firstVisibleItemIndex) {
+    val currentScrollPosition = remember(listState) {
+        derivedStateOf { listState.firstVisibleItemIndex }
+    }
+    LaunchedEffect(currentScrollPosition.value) {
         // 只有当滚动位置变化且不是初始化时才上报
-        if (listState.firstVisibleItemIndex != initialScrollPosition) {
-            onScrollPositionChange(listState.firstVisibleItemIndex)
+        if (currentScrollPosition.value != initialScrollPosition) {
+            onScrollPositionChange(currentScrollPosition.value)
         }
     }
     // 使用工厂方法创建ViewModel
@@ -614,9 +617,9 @@ fun VoiceActorCardUI(
             .fillMaxWidth()
             .height(
                 when {
-                    showCoefficient && showPinyin -> 300.dp // 同时显示系数和拼音时的高度
+                    showCoefficient && showPinyin -> 320.dp // 同时显示系数和拼音时的高度
                     showCoefficient -> 280.dp
-                    showPinyin -> 255.dp
+                    showPinyin -> 270.dp
                     else -> 230.dp
                 }
             )
@@ -673,8 +676,8 @@ fun CharacterCardUI(
             .fillMaxWidth()
             .height(
                 when {
-                    showPinyin -> 240.dp
-                    else -> 230.dp
+                    showPinyin -> 270.dp
+                    else -> 240.dp
                 }
             )
             .combinedClickable(
@@ -753,7 +756,7 @@ private fun NameSection(name: String, japaneseName: String, showPinyin: Boolean 
             text = if (showPinyin) PinyinUtils.convertJapaneseToRomaji(japaneseName) else japaneseName,
             style = MaterialTheme.typography.bodyMedium.copy(
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                fontSize = 12.sp
+                fontSize = 10.sp
             ),
             lineHeight = if (showPinyin) 24.sp else 18.sp
         )
