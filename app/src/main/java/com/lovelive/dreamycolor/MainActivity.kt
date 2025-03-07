@@ -4,15 +4,12 @@ package com.lovelive.dreamycolor
 
 import android.app.Application
 import android.content.Context
-import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -25,12 +22,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -38,7 +33,6 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -60,15 +54,9 @@ import com.lovelive.dreamycolor.viewmodel.EncyclopediaViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.lazy.grid.GridItemSpan
-
 import com.lovelive.dreamycolor.utils.PinyinUtils
-
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
-
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 
 // 用于对话框配置的数据类
@@ -177,35 +165,29 @@ fun MainContent(settingsManager: SettingsManager) {
             Screen.Profile
         )
     }
-
     // 添加导航状态
     var currentScreen by rememberSaveable { mutableStateOf<String?>(null) }
     var characterName by rememberSaveable { mutableStateOf("") }
     var voiceActorName by rememberSaveable { mutableStateOf("") }
-
     // 添加这个变量来记录百科卡片列表的滚动位置
     var encyclopediaScrollPosition by rememberSaveable { mutableStateOf(0) }
-
+    var encyclopediaDimension by rememberSaveable { mutableStateOf("角色") }
     // 添加Tab选择状态作为主导航机制
     var selectedTabIndex by rememberSaveable { mutableStateOf(0) }
-
     // 使用rememberSaveable保持页面状态在配置更改时不丢失
     val pagerState = rememberPagerState(pageCount = { items.size }, initialPage = selectedTabIndex)
     val coroutineScope = rememberCoroutineScope()
-
     // 确保pagerState和selectedTabIndex保持同步
     LaunchedEffect(selectedTabIndex) {
         if (pagerState.currentPage != selectedTabIndex) {
             pagerState.animateScrollToPage(selectedTabIndex)
         }
     }
-
     LaunchedEffect(pagerState.currentPage) {
         if (pagerState.currentPage != selectedTabIndex) {
             selectedTabIndex = pagerState.currentPage
         }
     }
-
     Scaffold(
         bottomBar = {
             // 只在主界面显示底部导航栏
@@ -255,7 +237,6 @@ fun MainContent(settingsManager: SettingsManager) {
                         currentScreen = null
                     }
                 )
-
                 "voice_actor_detail" -> VoiceActorDetailScreen(
                     voiceActorName = voiceActorName,
                     onBackPressed = {
@@ -263,7 +244,6 @@ fun MainContent(settingsManager: SettingsManager) {
                         currentScreen = null
                     }
                 )
-
                 null -> {
                     // 显示主界面
                     Box(modifier = Modifier.fillMaxSize()) {
@@ -290,6 +270,10 @@ fun MainContent(settingsManager: SettingsManager) {
                                     initialScrollPosition = encyclopediaScrollPosition,
                                     onScrollPositionChange = { position ->
                                         encyclopediaScrollPosition = position
+                                    },
+                                    initialDimension = encyclopediaDimension,
+                                    onDimensionChange = { dimension ->
+                                        encyclopediaDimension = dimension
                                     }
                                 )
                                 3 -> ProfileScreen(settingsManager)
@@ -323,24 +307,28 @@ fun EncyclopediaScreen(
     onCharacterClick: (String) -> Unit = {},
     onVoiceActorClick: (String) -> Unit = {},
     initialScrollPosition: Int = 0,
-    onScrollPositionChange: (Int) -> Unit = {}
+    onScrollPositionChange: (Int) -> Unit = {},
+    initialDimension: String = "角色",
+    onDimensionChange: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
     val database = remember { EncyclopediaDatabase.getDatabase(context) }
     val repository = remember { EncyclopediaRepository(database.encyclopediaDao()) }
     val settingsManager = remember { SettingsManager(context) }
-
     val listState = rememberLazyGridState(initialFirstVisibleItemIndex = initialScrollPosition)
-
     // 添加对话框状态管理
     var selectedCharacter by remember { mutableStateOf<CharacterCard?>(null) }
     var selectedVoiceActor by remember { mutableStateOf<VoiceActorCard?>(null) }
-
     // 添加新的拼音设置状态
     val showCoefficient by settingsManager.showCoefficientFlow.collectAsState(initial = false)
     val showPinyin by settingsManager.showPinyinFlow.collectAsState(initial = false)
-
-
+    // 使用传入的初始维度
+    var currentDimension by rememberSaveable { mutableStateOf(initialDimension) }
+    var previousDimension by rememberSaveable { mutableStateOf(initialDimension) }
+    // 当维度变化时通知父组件
+    LaunchedEffect(currentDimension) {
+        onDimensionChange(currentDimension)
+    }
     // 监听列表滚动位置变化并上报
     LaunchedEffect(listState.firstVisibleItemIndex) {
         // 只有当滚动位置变化且不是初始化时才上报
@@ -348,7 +336,6 @@ fun EncyclopediaScreen(
             onScrollPositionChange(listState.firstVisibleItemIndex)
         }
     }
-
     // 使用工厂方法创建ViewModel
     val viewModel: EncyclopediaViewModel = viewModel(
         factory = object : ViewModelProvider.Factory {
@@ -361,16 +348,11 @@ fun EncyclopediaScreen(
             }
         }
     )
-
     // 收集状态流
     val groupedCharacters by viewModel.getCharactersByGroup().collectAsState(initial = emptyMap())
     val groupedVoiceActors by viewModel.getVoiceActorsByGroup().collectAsState(initial = emptyMap())
-
-    // 维护UI状态
-    var currentDimension by rememberSaveable { mutableStateOf("角色") }
     val scrollState = rememberScrollState()
     var isFabVisible by remember { mutableStateOf(true) }
-
     // 新增：构建带分组的列表数据
     val characterItems = remember(groupedCharacters) {
         groupedCharacters.flatMap { (group, list) ->
@@ -382,31 +364,23 @@ fun EncyclopediaScreen(
             listOf(GroupItem.Header(group)) + list.map { GroupItem.VoiceActor(it) }
         }
     }
-
     // 监听滚动状态控制FAB可见性
     LaunchedEffect(scrollState.isScrollInProgress) {
-        if (scrollState.isScrollInProgress) {
+        if (listState.isScrollInProgress) {
             isFabVisible = false
         } else {
             delay(500) // 停止滚动后延迟显示
             isFabVisible = true
         }
     }
-
-
-    // 监听列表滚动位置变化
-    LaunchedEffect(listState.firstVisibleItemIndex) {
-        onScrollPositionChange(listState.firstVisibleItemIndex)
-    }
-
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
             // 切换按钮区域
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 16.dp), // 增加垂直间距
-                horizontalArrangement = Arrangement.Center, // 添加水平居中排列
+                    .padding(vertical = 16.dp),
+                horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
@@ -433,7 +407,6 @@ fun EncyclopediaScreen(
                     }
                 }
             }
-
             // 主内容区改用单 LazyGrid，使用state参数保持滚动位置
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
@@ -458,6 +431,7 @@ fun EncyclopediaScreen(
                             character = item.data,
                             showPinyin = showPinyin,
                             onClick = { character ->
+                                previousDimension = currentDimension // 保存当前维度
                                 selectedCharacter = character
                             }
                         )
@@ -466,15 +440,14 @@ fun EncyclopediaScreen(
                             showCoefficient = showCoefficient,
                             showPinyin = showPinyin,
                             onClick = { voiceActor ->
+                                previousDimension = currentDimension // 保存当前维度
                                 selectedVoiceActor = voiceActor
                             }
                         )
-                        else -> {}
                     }
                 }
             }
         }
-
         // 悬浮刷新按钮
         AnimatedVisibility(
             visible = isFabVisible,
@@ -497,35 +470,43 @@ fun EncyclopediaScreen(
             }
         }
     }
-
     // 角色详情对话框
     selectedCharacter?.let { character ->
         CharacterOptionsDialog(
             character = character,
-            onDismiss = { selectedCharacter = null },
+            onDismiss = {
+                selectedCharacter = null
+                currentDimension = previousDimension // 恢复之前的维度
+            },
             onLocalPageClick = {
                 selectedCharacter = null
+                currentDimension = previousDimension // 恢复之前的维度
                 onCharacterClick(character.name)
             },
             onExternalWikiClick = {
                 selectedCharacter = null
+                currentDimension = previousDimension // 恢复之前的维度
                 val url = "https://mzh.moegirl.org.cn/${character.name}"
                 context.openInBrowser(url)
             }
         )
     }
-
     // 声优详情对话框
     selectedVoiceActor?.let { voiceActor ->
         VoiceActorOptionsDialog(
             voiceActor = voiceActor,
-            onDismiss = { selectedVoiceActor = null },
+            onDismiss = {
+                selectedVoiceActor = null
+                currentDimension = previousDimension // 恢复之前的维度
+            },
             onLocalPageClick = {
                 selectedVoiceActor = null
+                currentDimension = previousDimension // 恢复之前的维度
                 onVoiceActorClick(voiceActor.name)
             },
             onExternalWikiClick = {
                 selectedVoiceActor = null
+                currentDimension = previousDimension // 恢复之前的维度
                 val url = "https://mzh.moegirl.org.cn/${voiceActor.name}"
                 context.openInBrowser(url)
             }
@@ -624,22 +605,26 @@ fun VoiceActorOptionsDialog(
 fun VoiceActorCardUI(
     voiceActor: VoiceActorCard,
     showCoefficient: Boolean,
-    showPinyin: Boolean = false, // 新增参数，默认值为false
+    showPinyin: Boolean = false,
     onClick: (VoiceActorCard) -> Unit = {}
 ) {
     val context = LocalContext.current
-
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(if (showCoefficient) 350.dp else 290.dp)
+            .height(
+                when {
+                    showCoefficient && showPinyin -> 300.dp // 同时显示系数和拼音时的高度
+                    showCoefficient -> 280.dp
+                    showPinyin -> 255.dp
+                    else -> 230.dp
+                }
+            )
             .combinedClickable(
                 onClick = {
-                    // 普通点击显示选项对话框
                     onClick(voiceActor)
                 },
                 onLongClick = {
-                    // 长按复制名称
                     context.copyToClipboard("${voiceActor.name}\n${voiceActor.japaneseName}")
                 }
             ),
@@ -657,11 +642,9 @@ fun VoiceActorCardUI(
             NameSection(
                 name = voiceActor.name,
                 japaneseName = voiceActor.japaneseName,
-                showPinyin = showPinyin // 使用新增的参数
+                showPinyin = showPinyin
             )
-
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
-
             // 信息区域
             GridLayout(
                 listOfNotNull(
@@ -670,14 +653,7 @@ fun VoiceActorCardUI(
                     if (showCoefficient) "系数" to voiceActor.coefficient else null
                 )
             )
-
-            // 描述区域
-            Text(
-                text = voiceActor.description,
-                maxLines = 3, // 限制描述文本行数
-                overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.bodyMedium
-            )
+            // 删除描述区域，不再显示简介文字
         }
     }
 }
@@ -689,29 +665,30 @@ fun VoiceActorCardUI(
 fun CharacterCardUI(
     character: CharacterCard,
     onClick: (CharacterCard) -> Unit = {},
-    showPinyin: Boolean = false // 新增参数，默认值为false
+    showPinyin: Boolean = false
 ) {
     val context = LocalContext.current
-
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(if (showPinyin) 303.dp else 290.dp)
+            .height(
+                when {
+                    showPinyin -> 240.dp
+                    else -> 230.dp
+                }
+            )
             .combinedClickable(
                 onClick = {
-                    // 普通点击显示选项对话框
                     onClick(character)
                 },
                 onLongClick = {
-                    // 长按复制名称
                     context.copyToClipboard("${character.name}\n${character.japaneseName}")
                 }
             ),
         elevation = CardDefaults.cardElevation(4.dp),
         shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
+        // 使用与VoiceActorCardUI相同的默认颜色
+        colors = CardDefaults.cardColors()
     ) {
         Column(
             modifier = Modifier
@@ -723,15 +700,13 @@ fun CharacterCardUI(
             NameSection(
                 name = character.name,
                 japaneseName = character.japaneseName,
-                showPinyin = showPinyin // 使用新增的参数
+                showPinyin = showPinyin
             )
-
             // 分割线
             HorizontalDivider(
                 thickness = 1.dp,
                 color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
             )
-
             // 信息网格
             GridLayout(
                 listOfNotNull(
@@ -739,17 +714,7 @@ fun CharacterCardUI(
                     "年级" to character.schoolYear,
                 )
             )
-
-            // 描述区域
-            Text(
-                text = character.description,
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-                    lineHeight = 18.sp
-                ),
-                maxLines = 4, // 限制最大行数
-                overflow = TextOverflow.Ellipsis
-            )
+            // 删除描述区域，不再显示简介文字
         }
     }
 }
