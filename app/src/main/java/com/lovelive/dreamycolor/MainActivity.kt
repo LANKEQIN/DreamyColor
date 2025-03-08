@@ -24,6 +24,8 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
@@ -35,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -88,6 +91,9 @@ class MainActivity : ComponentActivity() {
                 SettingsManager.ThemeMode.DARK -> true
                 else -> isSystemInDarkTheme()
             }
+            
+            // 收集主题颜色设置
+            val colorTheme by settingsManager.colorThemeFlow.collectAsState(initial = SettingsManager.ColorTheme.MATERIAL_YOU)
 
             // 动态设置状态栏文字颜色
             LaunchedEffect(isDarkTheme) {
@@ -98,7 +104,8 @@ class MainActivity : ComponentActivity() {
 
             DreamyColorTheme(
                 themeMode = themeMode,
-                textSize = textSize
+                textSize = textSize,
+                colorTheme = colorTheme
             ) {
                 // 使用rememberSaveable保持屏幕旋转后的状态
                 var showSplash by rememberSaveable { mutableStateOf(true) }
@@ -966,6 +973,115 @@ fun ProfileScreen(settingsManager: SettingsManager) {
                         }
                     )
                 }
+            }
+            
+            // 主题颜色设置卡片
+            val colorTheme by settingsManager.colorThemeFlow.collectAsState(initial = SettingsManager.ColorTheme.MATERIAL_YOU)
+            var showColorThemeDialog by rememberSaveable { mutableStateOf(false) }
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showColorThemeDialog = true },
+                shape = MaterialTheme.shapes.medium,
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                ),
+                elevation = CardDefaults.cardElevation(
+                    defaultElevation = 2.dp,
+                    pressedElevation = 4.dp
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        text = "主题颜色",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = when (colorTheme) {
+                                SettingsManager.ColorTheme.MATERIAL_YOU -> "Material You"
+                                SettingsManager.ColorTheme.PURPLE -> "奇迹紫色"
+                                SettingsManager.ColorTheme.ROSE -> "丹红色"
+                                SettingsManager.ColorTheme.LIGHT_BLUE -> "浅蓝色"
+                            },
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            ),
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                            contentDescription = "箭头",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
+                }
+            }
+
+            if (showColorThemeDialog) {
+                AlertDialog(
+                    onDismissRequest = { showColorThemeDialog = false },
+                    title = {
+                        Text(
+                            text = "选择主题颜色",
+                            style = MaterialTheme.typography.titleLarge
+                        )
+                    },
+                    text = {
+                        Column(
+                            modifier = Modifier.selectableGroup(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            SettingsManager.ColorTheme.entries.forEach { theme ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .selectable(
+                                            selected = colorTheme == theme,
+                                            onClick = {
+                                                coroutineScope.launch {
+                                                    settingsManager.setColorTheme(theme)
+                                                    showColorThemeDialog = false
+                                                }
+                                            },
+                                            role = Role.RadioButton
+                                        )
+                                        .padding(vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    RadioButton(
+                                        selected = colorTheme == theme,
+                                        onClick = null
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = when (theme) {
+                                            SettingsManager.ColorTheme.MATERIAL_YOU -> "Material You"
+                                            SettingsManager.ColorTheme.PURPLE -> "紫色"
+                                            SettingsManager.ColorTheme.ROSE -> "丹红色"
+                                            SettingsManager.ColorTheme.LIGHT_BLUE -> "浅蓝色"
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { showColorThemeDialog = false }) {
+                            Text("关闭")
+                        }
+                    }
+                )
             }
         }
 

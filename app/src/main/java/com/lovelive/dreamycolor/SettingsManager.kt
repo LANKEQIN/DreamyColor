@@ -18,6 +18,8 @@ class SettingsManager(private val context: Context) {
         private val TEXT_SIZE = intPreferencesKey("text_size")
         // 新增拼音显示设置键
         private val SHOW_PINYIN = booleanPreferencesKey("show_pinyin")
+        // 主题颜色设置键
+        private val COLOR_THEME = intPreferencesKey("color_theme")
     }
 
     // 新增：获取系数显示状态
@@ -28,6 +30,26 @@ class SettingsManager(private val context: Context) {
     // 添加拼音显示状态流
     val showPinyinFlow = context.dataStore.data.map { preferences ->
         preferences[SHOW_PINYIN] ?: false
+    }
+    
+    // 颜色主题枚举
+    enum class ColorTheme(val value: Int) {
+        MATERIAL_YOU(0),
+        PURPLE(1),
+        ROSE(2),
+        LIGHT_BLUE(3);
+
+        companion object {
+            fun from(value: Int): ColorTheme {
+                return entries.firstOrNull { it.value == value } ?: MATERIAL_YOU
+            }
+        }
+    }
+
+    // 颜色主题状态流
+    val colorThemeFlow = context.dataStore.data.map { preferences ->
+        val themeValue = preferences[COLOR_THEME] ?: 0
+        ColorTheme.from(themeValue)
     }
 
     // 模式定义
@@ -87,6 +109,13 @@ class SettingsManager(private val context: Context) {
     suspend fun setTextSize(size: TextSize) {
         context.dataStore.edit { settings ->
             settings[TEXT_SIZE] = size.value
+        }
+    }
+    
+    // 设置颜色主题
+    suspend fun setColorTheme(theme: ColorTheme) {
+        context.dataStore.edit { settings ->
+            settings[COLOR_THEME] = theme.value
         }
     }
 
