@@ -37,7 +37,13 @@ class SettingsManager(private val context: Context) {
         MATERIAL_YOU(0),
         PURPLE(1),
         ROSE(2),
-        LIGHT_BLUE(3);
+        LIGHT_BLUE(3),
+        ORANGE(4),
+        DEEP_BLUE(5),
+        YELLOW(6),
+        PINK(7),
+        GREEN(8),
+        WHITE(9);
 
         companion object {
             fun from(value: Int): ColorTheme {

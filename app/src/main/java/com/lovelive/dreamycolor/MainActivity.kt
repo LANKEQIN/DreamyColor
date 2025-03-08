@@ -13,6 +13,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -332,6 +334,10 @@ fun EncyclopediaScreen(
     // 使用传入的初始维度
     var currentDimension by rememberSaveable { mutableStateOf(initialDimension) }
     var previousDimension by rememberSaveable { mutableStateOf(initialDimension) }
+    // 添加分组展开状态管理
+    var expandedGroups by remember { mutableStateOf(mutableMapOf<String, Boolean>()) }
+    // 添加一个key来强制重组
+    var updateKey by remember { mutableStateOf(0) }
     // 当维度变化时通知父组件
     LaunchedEffect(currentDimension) {
         onDimensionChange(currentDimension)
@@ -422,7 +428,7 @@ fun EncyclopediaScreen(
                 columns = GridCells.Fixed(2),
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 state = listState
             ) {
@@ -436,24 +442,45 @@ fun EncyclopediaScreen(
                     }
                 ) { item ->
                     when (item) {
-                        is GroupItem.Header -> GroupHeader(item.title)
-                        is GroupItem.Character -> CharacterCardUI(
-                            character = item.data,
-                            showPinyin = showPinyin,
-                            onClick = { character ->
-                                previousDimension = currentDimension // 保存当前维度
-                                selectedCharacter = character
+                        is GroupItem.Header -> GroupHeader(
+                            title = item.title,
+                            expanded = expandedGroups[item.title] ?: true,
+                            onExpandedChange = {
+                                expandedGroups = expandedGroups.toMutableMap().apply {
+                                    this[item.title] = !(this[item.title] ?: true)
+                                }
+                                updateKey++ // 增加key触发重组
                             }
                         )
-                        is GroupItem.VoiceActor -> VoiceActorCardUI(
-                            voiceActor = item.data,
-                            showCoefficient = showCoefficient,
-                            showPinyin = showPinyin,
-                            onClick = { voiceActor ->
-                                previousDimension = currentDimension // 保存当前维度
-                                selectedVoiceActor = voiceActor
-                            }
-                        )
+                        is GroupItem.Character -> AnimatedVisibility(
+                            visible = expandedGroups[groupedCharacters.entries.find { it.value.contains(item.data) }?.key] ?: true,
+                            enter = fadeIn() + expandVertically(),
+                            exit = fadeOut() + shrinkVertically()
+                        ) {
+                            CharacterCardUI(
+                                character = item.data,
+                                showPinyin = showPinyin,
+                                onClick = { character ->
+                                    previousDimension = currentDimension
+                                    selectedCharacter = character
+                                }
+                            )
+                        }
+                        is GroupItem.VoiceActor -> AnimatedVisibility(
+                            visible = expandedGroups[groupedVoiceActors.entries.find { it.value.contains(item.data) }?.key] ?: true,
+                            enter = fadeIn() + expandVertically(),
+                            exit = fadeOut() + shrinkVertically()
+                        ) {
+                            VoiceActorCardUI(
+                                voiceActor = item.data,
+                                showCoefficient = showCoefficient,
+                                showPinyin = showPinyin,
+                                onClick = { voiceActor ->
+                                    previousDimension = currentDimension
+                                    selectedVoiceActor = voiceActor
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -526,15 +553,30 @@ fun EncyclopediaScreen(
 
 // 新增：分组标题组件
 @Composable
-private fun GroupHeader(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.headlineSmall,
-        color = MaterialTheme.colorScheme.primary,
+fun GroupHeader(title: String, expanded: Boolean = true, onExpandedChange: () -> Unit = {}) {
+    Row(
         modifier = Modifier
-            .padding(vertical = 8.dp)
             .fillMaxWidth()
-    )
+            .background(
+                MaterialTheme.colorScheme.secondaryContainer,
+                MaterialTheme.shapes.medium
+            )
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .clickable { onExpandedChange() },
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSecondaryContainer
+        )
+        Icon(
+            imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+            contentDescription = if (expanded) "折叠" else "展开",
+            tint = MaterialTheme.colorScheme.onSecondaryContainer
+        )
+    }
 }
 
 @Composable
@@ -732,7 +774,7 @@ fun CharacterCardUI(
 
 @Composable
 private fun NameSection(name: String, japaneseName: String, showPinyin: Boolean = false) {
-    Column {
+    Column(modifier = Modifier.height(if (showPinyin) 90.dp else 60.dp)) {
         // 中文名称
         Text(
             text = name,
@@ -740,7 +782,9 @@ private fun NameSection(name: String, japaneseName: String, showPinyin: Boolean 
                 color = MaterialTheme.colorScheme.primary,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
-            )
+            ),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
 
         // 如果开启拼音显示，且能从映射表找到对应拼音，则显示拼音
@@ -763,7 +807,7 @@ private fun NameSection(name: String, japaneseName: String, showPinyin: Boolean 
             text = if (showPinyin) PinyinUtils.convertJapaneseToRomaji(japaneseName) else japaneseName,
             style = MaterialTheme.typography.bodyMedium.copy(
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                fontSize = 10.sp
+                fontSize = 12.sp
             ),
             lineHeight = if (showPinyin) 24.sp else 18.sp
         )
@@ -800,16 +844,13 @@ private fun InfoItem(
 ) {
     val context = LocalContext.current
 
-    // 调整高度和布局以适应单列
     Column(
         modifier = modifier
-            .height(55.dp)
             .background(
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
                 shape = MaterialTheme.shapes.small
             )
             .padding(8.dp)
-            // 添加长按手势
             .combinedClickable(
                 onClick = { /* 普通点击不做处理 */ },
                 onLongClick = {
@@ -819,16 +860,12 @@ private fun InfoItem(
     ) {
         Text(
             text = label,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
         )
         Spacer(modifier = Modifier.height(2.dp))
         Text(
             text = value,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface
         )
@@ -1012,6 +1049,12 @@ fun ProfileScreen(settingsManager: SettingsManager) {
                                 SettingsManager.ColorTheme.PURPLE -> "奇迹紫色"
                                 SettingsManager.ColorTheme.ROSE -> "丹红色"
                                 SettingsManager.ColorTheme.LIGHT_BLUE -> "浅蓝色"
+                                SettingsManager.ColorTheme.ORANGE -> "橙色"
+                                SettingsManager.ColorTheme.DEEP_BLUE -> "深蓝色"
+                                SettingsManager.ColorTheme.YELLOW -> "黄色"
+                                SettingsManager.ColorTheme.PINK -> "粉色"
+                                SettingsManager.ColorTheme.GREEN -> "绿色"
+                                SettingsManager.ColorTheme.WHITE -> "白色"
                             },
                             style = MaterialTheme.typography.bodyMedium.copy(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -1067,9 +1110,15 @@ fun ProfileScreen(settingsManager: SettingsManager) {
                                     Text(
                                         text = when (theme) {
                                             SettingsManager.ColorTheme.MATERIAL_YOU -> "Material You"
-                                            SettingsManager.ColorTheme.PURPLE -> "紫色"
+                                            SettingsManager.ColorTheme.PURPLE -> "奇迹紫色"
                                             SettingsManager.ColorTheme.ROSE -> "丹红色"
                                             SettingsManager.ColorTheme.LIGHT_BLUE -> "浅蓝色"
+                                            SettingsManager.ColorTheme.ORANGE -> "橙色"
+                                            SettingsManager.ColorTheme.DEEP_BLUE -> "深蓝色"
+                                            SettingsManager.ColorTheme.YELLOW -> "黄色"
+                                            SettingsManager.ColorTheme.PINK -> "粉色"
+                                            SettingsManager.ColorTheme.GREEN -> "绿色"
+                                            SettingsManager.ColorTheme.WHITE -> "白色"
                                         }
                                     )
                                 }
