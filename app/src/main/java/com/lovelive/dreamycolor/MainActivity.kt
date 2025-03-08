@@ -425,7 +425,7 @@ fun EncyclopediaScreen(
                 columns = GridCells.Fixed(2),
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp), // 控制卡片之间的垂直间距
+                verticalArrangement = Arrangement.spacedBy(12.dp), // 控制卡片之间的垂直间距
                 horizontalArrangement = Arrangement.spacedBy(16.dp), // 控制卡片之间的水平间距
                 state = listState
             ) {
@@ -720,8 +720,8 @@ fun VoiceActorCardUI(
                 when {
                     showCoefficient && showPinyin -> 320.dp // 同时显示系数和拼音时的高度
                     showCoefficient -> 280.dp
-                    showPinyin -> 270.dp
-                    else -> 230.dp
+                    showPinyin -> 300.dp
+                    else -> 240.dp
                 }
             )
             // 移除水波纹效果，保留点击事件
@@ -740,8 +740,8 @@ fun VoiceActorCardUI(
         shape = MaterialTheme.shapes.large
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.padding(13.dp),
+            verticalArrangement = Arrangement.spacedBy(13.dp)
         ) {
             // 标题区域
             NameSection(
@@ -778,7 +778,7 @@ fun CharacterCardUI(
             .fillMaxWidth()
             .height(
                 when {
-                    showPinyin -> 270.dp
+                    showPinyin -> 300.dp
                     else -> 240.dp
                 }
             )
@@ -799,8 +799,8 @@ fun CharacterCardUI(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(13.dp),
+            verticalArrangement = Arrangement.spacedBy(13.dp)
         ) {
             // 名称区域
             NameSection(
@@ -828,13 +828,13 @@ fun CharacterCardUI(
 
 @Composable
 private fun NameSection(name: String, japaneseName: String, showPinyin: Boolean = false) {
-    Column(modifier = Modifier.height(if (showPinyin) 90.dp else 60.dp)) {
+    Column(modifier = Modifier.height(if (showPinyin) 115.dp else 60.dp)) {
         // 中文名称
         Text(
             text = name,
             style = MaterialTheme.typography.titleLarge.copy(
                 color = MaterialTheme.colorScheme.primary,
-                fontSize = 18.sp,
+                fontSize = 19.sp,
                 fontWeight = FontWeight.Bold
             ),
             maxLines = 1,
@@ -848,10 +848,10 @@ private fun NameSection(name: String, japaneseName: String, showPinyin: Boolean 
                     text = pinyin,
                     style = MaterialTheme.typography.bodyMedium.copy(
                         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-                        fontSize = 12.sp,  // 拼音字体
+                        fontSize = 13.sp,  // 拼音字体
                         fontWeight = FontWeight.Normal
                     ),
-                    lineHeight = 16.sp
+                    lineHeight = 19.sp
                 )
             }
         }
@@ -861,9 +861,9 @@ private fun NameSection(name: String, japaneseName: String, showPinyin: Boolean 
             text = if (showPinyin) PinyinUtils.convertJapaneseToRomaji(japaneseName) else japaneseName,
             style = MaterialTheme.typography.bodyMedium.copy(
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                fontSize = 12.sp
+                fontSize = 13.sp
             ),
-            lineHeight = if (showPinyin) 24.sp else 18.sp
+            lineHeight = if (showPinyin) 18.sp else 18.sp
         )
     }
 }
@@ -1067,7 +1067,7 @@ fun ProfileScreen(settingsManager: SettingsManager) {
                                 SettingsManager.ColorTheme.YELLOW -> "亮黄"
                                 SettingsManager.ColorTheme.PINK -> "轻粉"
                                 SettingsManager.ColorTheme.GREEN -> "天绿"
-                                SettingsManager.ColorTheme.WHITE -> "糯白"
+                                SettingsManager.ColorTheme.WHITE -> "霜灰"
                             },
                             style = MaterialTheme.typography.bodyMedium.copy(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -1187,7 +1187,7 @@ fun ProfileScreen(settingsManager: SettingsManager) {
                                             SettingsManager.ColorTheme.YELLOW -> "亮黄"
                                             SettingsManager.ColorTheme.PINK -> "轻粉"
                                             SettingsManager.ColorTheme.GREEN -> "天绿"
-                                            SettingsManager.ColorTheme.WHITE -> "糯白"
+                                            SettingsManager.ColorTheme.WHITE -> "霜灰"
                                         }
                                     )
                                 }
