@@ -561,7 +561,7 @@ fun GroupHeader(title: String, expanded: Boolean = true, onExpandedChange: () ->
                 MaterialTheme.colorScheme.secondaryContainer,
                 MaterialTheme.shapes.medium
             )
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
             .clickable { onExpandedChange() },
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
