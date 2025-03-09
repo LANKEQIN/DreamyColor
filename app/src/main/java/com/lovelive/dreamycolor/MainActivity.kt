@@ -326,7 +326,8 @@ fun EncyclopediaScreen(
     val showPinyin by settingsManager.showPinyinFlow.collectAsState(initial = false)
     var currentDimension by rememberSaveable { mutableStateOf(initialDimension) }
     var previousDimension by rememberSaveable { mutableStateOf(initialDimension) }
-    var expandedGroups by remember { mutableStateOf(mutableMapOf<String, Boolean>()) }
+    // 使用rememberSaveable而不是remember来保持展开状态，避免重组时丢失
+    var expandedGroups by rememberSaveable { mutableStateOf(mutableMapOf<String, Boolean>()) }
 
     LaunchedEffect(currentDimension) {
         onDimensionChange(currentDimension)
@@ -356,14 +357,24 @@ fun EncyclopediaScreen(
     val groupedCharacters by viewModel.getCharactersByGroup().collectAsState(initial = emptyMap())
     val groupedVoiceActors by viewModel.getVoiceActorsByGroup().collectAsState(initial = emptyMap())
 
-    val characterItems = remember(groupedCharacters) {
-        groupedCharacters.flatMap { (group, list) ->
-            listOf(GroupItem.Header(group)) + list.map { GroupItem.Character(it) }
+    // 使用derivedStateOf优化列表项计算，减少重组
+    val characterItems = remember(groupedCharacters, expandedGroups) {
+        derivedStateOf {
+            groupedCharacters.flatMap { (group, list) ->
+                val isExpanded = expandedGroups[group] ?: true
+                listOf(GroupItem.Header(group)) + 
+                if (isExpanded) list.map { GroupItem.Character(it) } else emptyList()
+            }
         }
     }
-    val voiceActorItems = remember(groupedVoiceActors) {
-        groupedVoiceActors.flatMap { (group, list) ->
-            listOf(GroupItem.Header(group)) + list.map { GroupItem.VoiceActor(it) }
+    
+    val voiceActorItems = remember(groupedVoiceActors, expandedGroups) {
+        derivedStateOf {
+            groupedVoiceActors.flatMap { (group, list) ->
+                val isExpanded = expandedGroups[group] ?: true
+                listOf(GroupItem.Header(group)) + 
+                if (isExpanded) list.map { GroupItem.VoiceActor(it) } else emptyList()
+            }
         }
     }
 
@@ -416,12 +427,13 @@ fun EncyclopediaScreen(
                 columns = GridCells.Fixed(2),
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp), // 控制卡片之间的垂直间距
-                horizontalArrangement = Arrangement.spacedBy(16.dp), // 控制卡片之间的水平间距
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
                 state = listState
             ) {
+                val items = if (currentDimension == "角色") characterItems.value else voiceActorItems.value
                 items(
-                    items = if (currentDimension == "角色") characterItems else voiceActorItems,
+                    items = items,
                     span = { item ->
                         when (item) {
                             is GroupItem.Header -> GridItemSpan(2)
@@ -430,9 +442,9 @@ fun EncyclopediaScreen(
                     },
                     key = { item -> 
                         when (item) {
-                            is GroupItem.Header -> item.title
-                            is GroupItem.Character -> item.data.name
-                            is GroupItem.VoiceActor -> item.data.name
+                            is GroupItem.Header -> "header_${item.title}"
+                            is GroupItem.Character -> "character_${item.data.name}"
+                            is GroupItem.VoiceActor -> "voiceactor_${item.data.name}"
                         }
                     }
                 ) { item ->
@@ -446,27 +458,29 @@ fun EncyclopediaScreen(
                                 }
                             }
                         )
-                        is GroupItem.Character -> CharacterItem(
-                            character = item.data,
-                            showPinyin = showPinyin,
-                            expandedGroups = expandedGroups,
-                            groupedCharacters = groupedCharacters,
-                            onClick = { character ->
-                                previousDimension = currentDimension
-                                selectedCharacter = character
-                            }
-                        )
-                        is GroupItem.VoiceActor -> VoiceActorItem(
-                            voiceActor = item.data,
-                            showCoefficient = showCoefficient,
-                            showPinyin = showPinyin,
-                            expandedGroups = expandedGroups,
-                            groupedVoiceActors = groupedVoiceActors,
-                            onClick = { voiceActor ->
-                                previousDimension = currentDimension
-                                selectedVoiceActor = voiceActor
-                            }
-                        )
+                        is GroupItem.Character -> {
+                            // 不再需要AnimatedVisibility，因为我们在构建列表时已经过滤了
+                            CharacterCardUI(
+                                character = item.data,
+                                showPinyin = showPinyin,
+                                onClick = { character ->
+                                    previousDimension = currentDimension
+                                    selectedCharacter = character
+                                }
+                            )
+                        }
+                        is GroupItem.VoiceActor -> {
+                            // 不再需要AnimatedVisibility，因为我们在构建列表时已经过滤了
+                            VoiceActorCardUI(
+                                voiceActor = item.data,
+                                showCoefficient = showCoefficient,
+                                showPinyin = showPinyin,
+                                onClick = { voiceActor ->
+                                    previousDimension = currentDimension
+                                    selectedVoiceActor = voiceActor
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -533,53 +547,6 @@ fun EncyclopediaScreen(
                 val url = "https://mzh.moegirl.org.cn/${voiceActor.name}"
                 context.openInBrowser(url)
             }
-        )
-    }
-}
-
-
-// 提取角色项逻辑以减少滚动时的计算开销
-@Composable
-private fun CharacterItem(
-    character: CharacterCard,
-    showPinyin: Boolean,
-    expandedGroups: Map<String, Boolean>,
-    groupedCharacters: Map<String, List<CharacterCard>>,
-    onClick: (CharacterCard) -> Unit
-) {
-    AnimatedVisibility(
-        visible = expandedGroups[groupedCharacters.entries.find { it.value.contains(character) }?.key] ?: true,
-        enter = fadeIn(animationSpec = tween(durationMillis = 200)),
-        exit = fadeOut(animationSpec = tween(durationMillis = 200))
-    ) {
-        CharacterCardUI(
-            character = character,
-            showPinyin = showPinyin,
-            onClick = onClick
-        )
-    }
-}
-
-// 提取声优项逻辑以减少滚动时的计算开销
-@Composable
-private fun VoiceActorItem(
-    voiceActor: VoiceActorCard,
-    showCoefficient: Boolean,
-    showPinyin: Boolean,
-    expandedGroups: Map<String, Boolean>,
-    groupedVoiceActors: Map<String, List<VoiceActorCard>>,
-    onClick: (VoiceActorCard) -> Unit
-) {
-    AnimatedVisibility(
-        visible = expandedGroups[groupedVoiceActors.entries.find { it.value.contains(voiceActor) }?.key] ?: true,
-        enter = fadeIn(animationSpec = tween(durationMillis = 200)),
-        exit = fadeOut(animationSpec = tween(durationMillis = 200))
-    ) {
-        VoiceActorCardUI(
-            voiceActor = voiceActor,
-            showCoefficient = showCoefficient,
-            showPinyin = showPinyin,
-            onClick = onClick
         )
     }
 }
@@ -704,27 +671,31 @@ fun VoiceActorCardUI(
     showPinyin: Boolean = false,
     onClick: (VoiceActorCard) -> Unit = {}
 ) {
-    val context = LocalContext.current
+    // 使用remember缓存计算结果，避免重组时重复计算
+    val cardHeight = remember(showCoefficient, showPinyin) {
+        when {
+            showCoefficient && showPinyin -> 340.dp
+            showCoefficient -> 280.dp
+            showPinyin -> 270.dp
+            else -> 240.dp
+        }
+    }
+
+    // 预先计算信息项列表，避免重组时重复创建
+    val infoItems = remember(voiceActor, showCoefficient) {
+        listOfNotNull(
+            "生日" to voiceActor.birthday,
+            "事务所" to voiceActor.agency,
+            if (showCoefficient) "系数" to voiceActor.coefficient else null
+        )
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(
-                when {
-                    showCoefficient && showPinyin -> 320.dp // 同时显示系数和拼音时的高度
-                    showCoefficient -> 280.dp
-                    showPinyin -> 300.dp
-                    else -> 240.dp
-                }
-            )
-            // 移除水波纹效果，保留点击事件
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onTap = { onClick(voiceActor) },
-                    onLongPress = {
-                        context.copyToClipboard("${voiceActor.name}\n${voiceActor.japaneseName}")
-                    }
-                )
-            },
+            .height(cardHeight)
+            // 使用clickable替代pointerInput以提高性能
+            .clickable { onClick(voiceActor) },
         elevation = CardDefaults.cardElevation(
             defaultElevation = 4.dp,
             pressedElevation = 8.dp
@@ -743,20 +714,10 @@ fun VoiceActorCardUI(
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
             // 信息区域
-            GridLayout(
-                listOfNotNull(
-                    "生日" to voiceActor.birthday,
-                    "事务所" to voiceActor.agency,
-                    if (showCoefficient) "系数" to voiceActor.coefficient else null
-                )
-            )
-            // 删除描述区域，不再显示简介文字
+            GridLayout(infoItems)
         }
     }
 }
-
-
-
 
 @Composable
 fun CharacterCardUI(
@@ -770,7 +731,7 @@ fun CharacterCardUI(
             .fillMaxWidth()
             .height(
                 when {
-                    showPinyin -> 300.dp
+                    showPinyin -> 270.dp
                     else -> 240.dp
                 }
             )
@@ -817,16 +778,59 @@ fun CharacterCardUI(
     }
 }
 
-
 @Composable
 private fun NameSection(name: String, japaneseName: String, showPinyin: Boolean = false) {
-    Column(modifier = Modifier.height(if (showPinyin) 115.dp else 60.dp)) {
+    // 使用remember缓存计算结果
+    val height = remember(showPinyin) {
+        if (showPinyin) 70.dp else 60.dp
+    }
+    
+    // 预先计算拼音，避免在渲染时计算
+    val pinyin = remember(name, showPinyin) {
+        if (showPinyin) PinyinUtils.chinesePinyinMap[name] else null
+    }
+    
+    // 预先计算罗马音，避免在渲染时计算
+    val displayJapaneseName = remember(japaneseName, showPinyin) {
+        if (showPinyin) PinyinUtils.convertJapaneseToRomaji(japaneseName) else japaneseName
+    }
+    
+    // 根据拼音长度动态计算字体大小
+    val pinyinFontSize = remember(pinyin) {
+        when {
+            pinyin == null ||
+                    pinyin.length <= 14 -> 13.sp
+                    pinyin.length == 23 -> 9.sp
+                    pinyin.length == 21 -> 9.sp
+                    pinyin.length == 22 -> 9.sp
+                    pinyin.length == 20 -> 9.sp
+                    pinyin.length == 19 -> 9.sp
+                    pinyin.length == 18 -> 10.sp
+                    pinyin.length == 17 -> 10.sp
+                    pinyin.length == 16 -> 10.sp
+            else -> 13.sp
+        }
+    }
+    
+    // 根据日文名长度动态计算字体大小
+    val japaneseNameFontSize = remember(japaneseName) {
+        when {
+            displayJapaneseName.length <= 13 -> 13.sp
+            displayJapaneseName.length == 14 -> 13.sp
+            displayJapaneseName.length == 16 -> 11.sp
+            displayJapaneseName.length == 17 -> 11.sp
+            displayJapaneseName.length == 18 -> 10.sp
+            else -> 13.sp
+        }
+    }
+    
+    Column(modifier = Modifier.height(height)) {
         // 中文名称
         Text(
             text = name,
             style = MaterialTheme.typography.titleLarge.copy(
                 color = MaterialTheme.colorScheme.primary,
-                fontSize = 19.sp,
+                fontSize = 19 .sp,
                 fontWeight = FontWeight.Bold
             ),
             maxLines = 1,
@@ -834,34 +838,29 @@ private fun NameSection(name: String, japaneseName: String, showPinyin: Boolean 
         )
 
         // 如果开启拼音显示，且能从映射表找到对应拼音，则显示拼音
-        if (showPinyin) {
-            PinyinUtils.chinesePinyinMap[name]?.let { pinyin ->
-                Text(
-                    text = pinyin,
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-                        fontSize = 13.sp,  // 拼音字体
-                        fontWeight = FontWeight.Normal
-                    ),
-                    lineHeight = 19.sp
-                )
-            }
+        if (showPinyin && pinyin != null) {
+            Text(
+                text = pinyin,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                    fontSize = pinyinFontSize,
+                    fontWeight = FontWeight.Normal
+                ),
+                lineHeight = 19.sp
+            )
         }
 
-        // 日文名显示（保持现有的罗马音转换）
+        // 日文名显示
         Text(
-            text = if (showPinyin) PinyinUtils.convertJapaneseToRomaji(japaneseName) else japaneseName,
+            text = displayJapaneseName,
             style = MaterialTheme.typography.bodyMedium.copy(
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                fontSize = 13.sp
+                fontSize = japaneseNameFontSize
             ),
-            lineHeight = if (showPinyin) 18.sp else 18.sp
+            lineHeight = 18.sp
         )
     }
 }
-
-
-
 
 @Composable
 private fun GridLayout(items: List<Pair<String, String>>) {
@@ -889,11 +888,18 @@ private fun InfoItem(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    
+    // 使用remember缓存背景颜色和文本样式，避免重组时重复创建
+    val backgroundColor = MaterialTheme.colorScheme.surfaceContainerHigh
+    val labelStyle = MaterialTheme.typography.labelSmall
+    val labelColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+    val valueStyle = MaterialTheme.typography.bodyMedium
+    val valueColor = MaterialTheme.colorScheme.onSurface
 
     Column(
         modifier = modifier
             .background(
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                color = backgroundColor,
                 shape = MaterialTheme.shapes.small
             )
             .padding(8.dp)
@@ -906,14 +912,14 @@ private fun InfoItem(
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+            style = labelStyle,
+            color = labelColor
         )
         Spacer(modifier = Modifier.height(2.dp))
         Text(
             text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface
+            style = valueStyle,
+            color = valueColor
         )
     }
 }

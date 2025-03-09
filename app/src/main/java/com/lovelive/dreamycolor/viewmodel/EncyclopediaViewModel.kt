@@ -84,18 +84,34 @@ class EncyclopediaViewModel(
             }
     }
 
-    // 新增：根据团体名称分组角色
+    // 优化：使用缓存机制减少重复计算
+    private val _charactersByGroup = MutableStateFlow<Map<String, List<CharacterCard>>>(emptyMap())
+    private val _voiceActorsByGroup = MutableStateFlow<Map<String, List<VoiceActorCard>>>(emptyMap())
+
+    // 新增：根据团体名称分组角色 - 优化版本
     fun getCharactersByGroup(): Flow<Map<String, List<CharacterCard>>> {
-        return allCharacters.map { characters ->
-            characters.groupBy { getCharacterGroupName(it) }
+        // 如果缓存为空，则进行一次计算
+        if (_charactersByGroup.value.isEmpty()) {
+            viewModelScope.launch {
+                allCharacters.collect { characters ->
+                    _charactersByGroup.value = characters.groupBy { getCharacterGroupName(it) }
+                }
+            }
         }
+        return _charactersByGroup
     }
 
-    // 新增：根据团体名称分组声优
+    // 新增：根据团体名称分组声优 - 优化版本
     fun getVoiceActorsByGroup(): Flow<Map<String, List<VoiceActorCard>>> {
-        return allVoiceActors.map { voiceActors ->
-            voiceActors.groupBy { getVoiceActorGroupName(it) }
+        // 如果缓存为空，则进行一次计算
+        if (_voiceActorsByGroup.value.isEmpty()) {
+            viewModelScope.launch {
+                allVoiceActors.collect { voiceActors ->
+                    _voiceActorsByGroup.value = voiceActors.groupBy { getVoiceActorGroupName(it) }
+                }
+            }
         }
+        return _voiceActorsByGroup
     }
 
     // 新增：根据角色获取所属团体名称
